@@ -3,27 +3,28 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 
-const char* ssid = "TELUSBM9432";
-const char* password = "RH7hdMH9NKcJ";
-const char* targetIP = "192.168.1.237";
+// Replace the data below with your network credentials
+const char* ssid = "SSID";
+const char* password = "PASSWORD";
+const char* targetIP = "IP_ADDRESS";
+
 const int udpPort = 8888;
 WiFiUDP udp;
 
-#define MPU_ADDRESS 0x68 // I2C address of the MPU6050
-#define WHO_AM_I 0x75 // Register address for WHO_AM_I
-#define PWR_MGMT_1 0x6B // Register address for power management
-#define ACCEL_X_H 0x3B // Register address for accelerometer X-axis high byte
-#define GYRO_X_H 0x43 // Register address for gyroscope X-axis high byte
+#define MPU_ADDRESS 0x68
+#define WHO_AM_I 0x75
+#define PWR_MGMT_1 0x6B
+#define ACCEL_X_H 0x3B
+#define GYRO_X_H 0x43
 
 float gyroXError = 0.0;
 float gyroYError = 0.0;
 float gyroZError = 0.0;
 
-const float ACCEL_SCALE = 16384.0; // Scale factor for accelerometer (assuming ±2g range)
-const float GYRO_SCALE = 131.0; // Scale factor for gyroscope (assuming ±250°/s range)
+const float ACCEL_SCALE = 16384.0;  // Conversion factor for accelerometer data to g's
+const float GYRO_SCALE = 131.0; // Conversion factor for gyroscope data to degrees per second (dps)
 
 unsigned long previousMillis = 0;
-//unsigned long cycle = 0;
 
 float finalRoll = 0.0;
 float finalPitch = 0.0;
@@ -36,50 +37,56 @@ bool ledState = false;
 void setup() {
   Serial.begin(115200);
 
+  // Connect to WiFi network
   Serial.print("Connecting to WiFi network: ");
   Serial.println(ssid);
 
   WiFi.begin(ssid, password);
+  Serial.print("Connecting...");
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
-    Serial.println("Connecting...");
+    Serial.print(".");
   }
+  Serial.println();
 
   Serial.println("Connected to WiFi network!");
-  Serial.print("IP Address: ");
+  Serial.print("ESP32 IP Address: ");
   Serial.println(WiFi.localIP());
 
   Wire.begin(21, 22, 400000);
 
+  // Confirms identity of the MPU6050 sensor by reading the WHO_AM_I register
   Wire.beginTransmission(MPU_ADDRESS);
-  Wire.write(WHO_AM_I); // Request the WHO_AM_I register
+  Wire.write(WHO_AM_I);
   Wire.endTransmission(false);
 
-  Wire.requestFrom(MPU_ADDRESS, 1); // Request 1 byte from the MPU6050
-  byte sensorID = Wire.read(); // Read the byte
+  Wire.requestFrom(MPU_ADDRESS, 1);
+  byte sensorID = Wire.read();
 
   Serial.print("Sensor ID: 0x");
-  Serial.println(sensorID, HEX); // Print the sensor ID in hexadecimal format
+  Serial.println(sensorID, HEX);
 
   if (sensorID != 0x70) {
     Serial.println("Error: MPU6050 not detected!");
     while(1);
   }
-    
+  
+  // Wakes up the MPU6050 sensor by writing 0 to the power management register
   Serial.println("MPU6050 successfully detected!");
   Wire.beginTransmission(MPU_ADDRESS);
-  Wire.write(PWR_MGMT_1); // Request the power management register
+  Wire.write(PWR_MGMT_1);
   Wire.write(0x00);
   Wire.endTransmission(true);
-  // Wake up the MPU6050
 
-  // Calibrate the gyroscope to find the average error values
+  // Reads the gyroscope while stationary to find the average error values and calibrate the gyroscope
+  Serial.println("Calibrating gyroscope... Please keep the sensor stationary.");
   for (int i = 0; i < 500; i++) {
     Wire.beginTransmission(MPU_ADDRESS);
-    Wire.write(GYRO_X_H); // Request the gyroscope X-axis high byte
+    Wire.write(GYRO_X_H);
     Wire.endTransmission(false);
 
-    Wire.requestFrom(MPU_ADDRESS, 6); // Request 6 bytes from the MPU6050
+    Wire.requestFrom(MPU_ADDRESS, 6); // Requests gyroscope data from the MPU6050
 
     byte gyroXHigh = Wire.read();
     byte gyroXLow = Wire.read();
@@ -96,10 +103,9 @@ void setup() {
     gyroYError += (gyroY / GYRO_SCALE);
     gyroZError += (gyroZ / GYRO_SCALE);
 
-    delay(5); // Delay for 5 milliseconds between readings
+    delay(5);
   }
 
-  //Divide the accumulated errors by the number of samples to get the average error
   gyroXError /= 500.0;
   gyroYError /= 500.0;
   gyroZError /= 500.0;
@@ -110,11 +116,12 @@ void setup() {
 }
 
 void loop() {
+  // Reads the accelerometer and gyroscope simulatenously
   Wire.beginTransmission(MPU_ADDRESS);
-  Wire.write(ACCEL_X_H); // Request the accelerometer X-axis high byte
+  Wire.write(ACCEL_X_H);
   Wire.endTransmission(false);
 
-  Wire.requestFrom(MPU_ADDRESS, 14); // Request 14 bytes from the MPU6050
+  Wire.requestFrom(MPU_ADDRESS, 14);
 
   byte accelXHigh = Wire.read();
   byte accelXLow = Wire.read();
@@ -152,70 +159,43 @@ void loop() {
   float gyroZ_dps = gyroZ / GYRO_SCALE - gyroZError;
 
   unsigned long currentMillis = millis();
-  float dt = (currentMillis - previousMillis) / 1000.0; // Convert to seconds
+  float dt = (currentMillis - previousMillis) / 1000.0; // Calculates dt in seconds
 
+  // Calculates roll and pitch angles from the accelerometer
   float roll = atan2(accelY_g, accelZ_g) * 180.0 / PI;
   float pitch = atan2(-accelX_g, sqrt(accelY_g * accelY_g + accelZ_g * accelZ_g)) * 180.0 / PI;
 
+  // Prevents snapping of the roll angle when crossing the -180 to 180 degree boundary
   if (roll - finalRoll > 180.0) {
     finalRoll += 360.0;
   } else if (finalRoll - roll > 180.0) {
     finalRoll -= 360.0;
   }
 
+  // Only uses gyroscope data for roll when the pitch angle is near 90 degrees to avoid gimbal lock
   if (fabs(pitch) > 80) {
-    finalRoll = (finalRoll + (gyroX_dps * dt));
+    finalRoll = finalRoll + (gyroX_dps * dt);
   } else {
-    finalRoll = 0.96 * (finalRoll + (gyroX_dps * dt)) + 0.04 * roll;
+    finalRoll = 0.96 * (finalRoll + (gyroX_dps * dt)) + 0.04 * roll;  // Complementary filter to combine accelerometer and gyroscope data
   }
 
   finalPitch = 0.96 * (finalPitch + (gyroY_dps * dt)) + 0.04 * pitch;
-  yaw += gyroZ_dps * dt;
+  yaw += gyroZ_dps * dt;  //Yaw can only be determined from gyroscope data
 
-  /*
-  if (cycle % 50 == 0) { // Print every 50 cycles to reduce serial output
-    Serial.print("Accelerometer X-axis: ");
-    Serial.println(accelX_g); // Print the accelerometer X-axis value in g
-    Serial.print("Accelerometer Y-axis: ");
-    Serial.println(accelY_g); // Print the accelerometer Y-axis value 
-    Serial.print("Accelerometer Z-axis: ");
-    Serial.println(accelZ_g); // Print the accelerometer Z-axis value
-
-    Serial.println();
-
-    Serial.print("Gyroscope X-axis: ");
-    Serial.println(gyroX_dps );
-    Serial.print("Gyroscope Y-axis: ");
-    Serial.println(gyroY_dps);
-    Serial.print("Gyroscope Z-axis: ");
-    Serial.println(gyroZ_dps);
-
-    Serial.println();
-
-    Serial.print("Roll: ");
-    Serial.println(finalRoll);
-    Serial.print("Pitch: ");
-    Serial.println(finalPitch);
-    Serial.print("Yaw: ");
-    Serial.println(yaw);
-
-    Serial.println("------------------------------");
-  }
-  */
-
+  // Sends roll, pitch, and yaw data over UDP to the specified target IP address and port
   char packetBuffer[50];
   snprintf(packetBuffer, sizeof(packetBuffer), "%.2f, %.2f, %.2f", finalRoll, finalPitch, yaw);
   udp.beginPacket(targetIP, udpPort);
   udp.print(packetBuffer);
-  int success = udp.endPacket();
+  udp.endPacket();
 
+  //Continuously toggles LED to track that loop is running and hasn't frozen
   if (millis() - lastToggleTime >= 500) {
     ledState = !ledState;
     digitalWrite(ONBOARD_LED, ledState);
     lastToggleTime = millis();
-}
+  }
 
-  previousMillis = currentMillis; // Update the previous time for the next loop iteration
+  previousMillis = currentMillis;
   delay(10);
-  //cycle++;
 }
