@@ -14,7 +14,7 @@ A real-time, wireless 3D motion tracking system built with an ESP32 and an MPU-6
 *   Breadboard and jumper wires
 
 ### Wiring / Pinout
-*![Circuit Diagram](IMU-circuit-diagram.png))*
+*![Circuit Diagram](IMU-circuit-diagram.png =200x)*
 
 | ESP32 Pin | MPU-6500 Pin | Function |
 | :--- | :--- | :--- |
