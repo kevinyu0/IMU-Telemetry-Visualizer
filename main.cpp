@@ -189,7 +189,7 @@ void loop() {
   udp.print(packetBuffer);
   udp.endPacket();
 
-  //Continuously toggles LED to track that loop is running and hasn't frozen
+  // Continuously toggles LED to track that loop is running and hasn't frozen
   if (millis() - lastToggleTime >= 500) {
     ledState = !ledState;
     digitalWrite(ONBOARD_LED, ledState);
