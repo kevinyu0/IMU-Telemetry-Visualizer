@@ -6,7 +6,7 @@
 // Replace the data below with your network credentials
 const char* ssid = "SSID";
 const char* password = "PASSWORD";
-const char* targetIP = "IP_ADRESS";
+const char* targetIP = "IP_ADDRESS";
 
 const int udpPort = 8888;
 WiFiUDP udp;
