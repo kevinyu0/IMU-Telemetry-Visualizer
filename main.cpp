@@ -165,7 +165,7 @@ void loop() {
   float roll = atan2(accelY_g, accelZ_g) * 180.0 / PI;
   float pitch = atan2(-accelX_g, sqrt(accelY_g * accelY_g + accelZ_g * accelZ_g)) * 180.0 / PI;
 
-  finalRoll = finalRoll + (gyroX_dps * dt);
+  finalRoll = finalRoll + (gyroX_dps * dt);  // Roll calculated only from gyroscope data
 
   // Shift the accelerometer data so it sits adjacent to the gyroscope data
   if (finalRoll - roll > 180.0) {
