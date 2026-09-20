@@ -58,13 +58,11 @@ When the onboard LED begins continuously blinking, calibration is complete and t
 ### Gimbal Lock
 This project calculates orientation using Euler angles (Roll, Pitch, Yaw). As a mathematical consequence, an issue known as Gimbal Lock occurs when the board reaches a pitch angle of exactly ±90°, causing the Roll and Yaw axes to align and losing a degree of freedom.
 
-To mitigate this effect, the firmware implements a conditional threshold in the complementary filter:
+To help suppress this effect, the firmware implements a conditional threshold in the complementary filter:
 
 *    **When Pitch is < 80°:** The filter relies heavily on the gyroscope for smooth movement, using the accelerometer to correct long-term drift.
 
 *    **When Pitch is > 80°:** Accelerometer data is actively ignored to prevent atan2 calculation errors, relying 100% on gyroscope integration.
 
-**Limitation:** If the board is held at > 80° pitch for extended periods, the roll orientation will slowly drift due to the lack of accelerometer correction.
-
-A solution involving quaternions rather than Euler angles to determine orientation has been considered for a potential V2 of this project.
+**Reflection on Limitations:** If the board is held at > 80° pitch for extended periods, the roll orientation will slowly drift due to the lack of accelerometer correction. There are also addiitonal issues stemming from gimbal lock which hinders function when flipping the board upside-down. Due to the nature of Euler angles, further debugging would be an inefficent use of time as Gimbal Lock can never be fully addressed. Instead, a solution involving quaternions rather than Euler angles to determine orientation has been considered for a potential V2 of this project.
 
