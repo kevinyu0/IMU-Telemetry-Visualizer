@@ -179,6 +179,7 @@ void loop() {
     finalRoll = (0.96 * finalRoll) + (0.04 * roll);
   }
 
+  // Prevents snapping of the roll angle when it crosses the -180/180 degree boundary
   if (finalRoll > 180.0) {
     finalRoll -= 360.0;
   } else if (finalRoll < -180.0) {
