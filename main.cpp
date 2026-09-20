@@ -6,7 +6,7 @@
 // Replace the data below with your network credentials
 const char* ssid = "SSID";
 const char* password = "PASSWORD";
-const char* targetIP = "IP_ADDRESS";
+const char* targetIP = "IP_ADRESS";
 
 const int udpPort = 8888;
 WiFiUDP udp;
@@ -165,18 +165,24 @@ void loop() {
   float roll = atan2(accelY_g, accelZ_g) * 180.0 / PI;
   float pitch = atan2(-accelX_g, sqrt(accelY_g * accelY_g + accelZ_g * accelZ_g)) * 180.0 / PI;
 
-  // Prevents snapping of the roll angle when crossing the -180 to 180 degree boundary
-  if (roll - finalRoll > 180.0) {
-    finalRoll += 360.0;
-  } else if (finalRoll - roll > 180.0) {
-    finalRoll -= 360.0;
+  finalRoll = finalRoll + (gyroX_dps * dt);
+
+  // Shift the accelerometer data so it sits adjacent to the gyroscope data
+  if (finalRoll - roll > 180.0) {
+    roll += 360.0;
+  } else if (roll - finalRoll > 180.0) {
+    roll -= 360.0;
   }
 
-  // Only uses gyroscope data for roll when the pitch angle is near 90 degrees to avoid gimbal lock
-  if (fabs(pitch) > 80) {
-    finalRoll = finalRoll + (gyroX_dps * dt);
-  } else {
-    finalRoll = 0.96 * (finalRoll + (gyroX_dps * dt)) + 0.04 * roll;  // Complementary filter to combine accelerometer and gyroscope data
+  // Integrates accelerometer data if the pitch angle is not near 90 degrees to avoid gimbal lock
+  if (fabs(pitch) <= 80) {
+    finalRoll = (0.96 * finalRoll) + (0.04 * roll);
+  }
+
+  if (finalRoll > 180.0) {
+    finalRoll -= 360.0;
+  } else if (finalRoll < -180.0) {
+    finalRoll += 360.0;
   }
 
   finalPitch = 0.96 * (finalPitch + (gyroY_dps * dt)) + 0.04 * pitch;
