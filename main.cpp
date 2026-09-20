@@ -4,9 +4,9 @@
 #include <WiFiUdp.h>
 
 // Replace the data below with your network credentials
-const char* ssid = "SSID";
-const char* password = "PASSWORD";
-const char* targetIP = "IP_ADDRESS";
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+const char* targetIP = "YOUR_PC_IP_ADDRESS";
 
 const int udpPort = 8888;
 WiFiUDP udp;
